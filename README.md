@@ -6,7 +6,5 @@
 
 java version "1.8.0_281"
 
-gradle 7.0
-
 maven 3.8.1
 
