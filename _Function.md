@@ -16,6 +16,8 @@
 
 
 
+## AbstractApplicationContext
+
 | function  | 반환 | 설명          | 참고 |
 | --------- | ---- | ------------- | ---- |
 | `close()` |      | 컨테이너 종료 |      |
