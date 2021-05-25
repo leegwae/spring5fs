@@ -127,7 +127,7 @@ public class AppContext{
 
 
 
-- AspectJ 패턴을 사용하기 위하여 의존 대상에 `aspectjweraver` 모듈을 추가해야 한다.
+- AspectJ 패턴을 사용하기 위하여 의존 대상에 `aspectjweaver` 모듈을 추가해야 한다.
 
 P.136 ??
 

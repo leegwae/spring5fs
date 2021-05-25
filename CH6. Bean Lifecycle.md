@@ -1,6 +1,6 @@
 # CH6. Bean Lifecycle
 
-## 6.1 컨테이너 초기호와 종료
+## 6.1 컨테이너 초기화와 종료
 
 - 스프링 컨테이너는 초기화와 종료라는 라이프사이클을 갖는다.
 
@@ -108,6 +108,10 @@ public class Client implements InitializingBean, DisposableBean{
 }
 
 ```
+
+
+
+### 인터페이스 구현 예시
 
 ```java
 // AppContext.java
@@ -225,7 +229,7 @@ System.out.println(b1 == b2);	// false
 
 
 
-## 빈 객체의 범위 지정하기
+### 빈 객체의 범위 지정하기
 
 - `@Scope("prototype")`:  빈 객체의 범위를 프로토타입 범위로 지정한다.
 
