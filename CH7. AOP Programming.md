@@ -256,7 +256,7 @@ public class AppContext {
     
     @Bean
     public Calculator calculator(){
-        return new Calculator();
+        return new RecCalculator();
     }
 }
 ```
@@ -293,4 +293,132 @@ com.sun.proxy.$Proxy19
 - Line 12 `long fiveFact = cal.factorial(5);`
   - `MyAspect.measure()` 클래스 실행됨.
 - `com.sun.proxy.$Proxy19`: `Calculator`의 타입이 `RecCalculator` 클래스가 아닌 `$Proxy17`로 출력. 즉 스프링이 생성한 프록시 타입이 `cal.getClass`에서 반환됨.
+
+
+
+### 7.3.2 ProceddingJoinPoint의 메서드
+
+- `Around Advice`에서 사용할 공통 기능 메서드는 파라미터로 전달받은 `ProceedingJoinPoint` 의 `proceed()` 메서드를 호출한다(`Line 4`).
+
+```java
+@Around("publicTarget()")
+    public Object measure(ProceedingJoinPoint joinPoint) thrwos Throwable {
+        try {
+            Object result = joinPoint.proceed();
+            return result;
+        } finally {
+        }
+    }
+```
+
+
+
+### ProceddingJoinPoint 인터페이스
+
+| 메서드           | 설명                                  |
+| ---------------- | ------------------------------------- |
+| `proceed()`      | 공통 기능 메서드를 호출한다.          |
+| `getSignature()` | 호출되는 메서드에 대한 정보를 구한다. |
+| `getTarget()`    | 대상 객체를 구한다.                   |
+| `getArgs()`      | 파라미터 목록을 구한다.               |
+
+
+
+### Signature 인터페이스
+
+| 메서드            | 설명                                                         |
+| ----------------- | ------------------------------------------------------------ |
+| `getName()`       | 호출되는 메서드의 이름을 반환한다.                           |
+| `toLongString()`  | 호출되는 메서드의 리턴 타입, 파라미터 타입이 모두 표시된 문장을 반환한다. |
+| `toShortString()` | 호출되는 메서드를 축약한 문장을 반환한다(기본 구현은 메서드의 이름만을 반환). |
+
+
+
+## 7.4 프록시 생성 방식
+
+```java
+// main\MainAspect.java
+// 수정 전
+Calculator cal = ctx.getBean("calculator", Calculator.class);
+
+// 수정 후
+RecCalculator cal = ctx.getBean("calculator", RecCalculator.class);
+```
+
+- 위와 같이 수정할 경우, `calculator` 빈을 생성할 때 `RecCalcaultor` 타입의 객체를 사용했음에도 아래와 같은 오류가 발생한다.
+
+```
+org.springframework.beans.factory.BeanNotOfRequiredTypeException: Bean named 'calculator' is expected to be of type 'factorial.RecCalculator' but was actually of type 'com.sun.proxy.$Proxy19'
+```
+
+> `caculator`는 `factorialRecCalculator` 타입으로 예상되었지만 실제 타입은 `com.sun.proxy.$Proxy19`이다.
+
+
+
+### 프록시 객체의 타입
+
+- `$Proxy19`는 스프링이 런타임에 생성한 프록시 객체의 클래스 이름이다. 
+- 스프링은 프록시 객체를 생성할 때, 생성할 빈 객체가 인터페이스를 상속했다면 이 인터페이스를 이용하여 프록시를 생성한다.
+- 따라서 `$Proxy19`와 `RecCalcaultor`는 모두 `Calcaultor` 인터페이스를 상속받는다.
+
+```java
+// config\AppContext.java
+@Bean
+pubic Calculator calcaultor(){
+    return new RecCalculator();
+}
+
+// main\main.java
+RecCalculator cal = ctx.getBean("calculator", RecCalcaultor.class);
+```
+
+- 빈의 실제 타입이 `RecCalculator`이어도 `calculator`라는 이름을 가진 빈 객체의 타입은 `Calculator` 인터페이스를 상속받은 프록시 타입이 된다.
+
+```java
+// config\AppContext.java
+@Configuration
+@EnableAspectJAutoProxy(proxyTargetClass=true)
+public class AppContext {}
+
+// main\main.java
+RecCalculator cal = ctx.getBean("calculator", RecCalcaultor.class);
+```
+
+- `@EnableAsepctJAutoProxy` 애노테이션의 `proxyTargetClass` 속성을 `true`로 지정하면 인터페이스가 아닌 자바 클래스를 상속받아 프록시를 생성한다.
+- 따라서 프록시 객체의 타입은 `RecCalcaultor`를 상속받았으므로, 인터페이스를 상속받을 때와 달리 오류가 발생하지 않는다.
+
+
+
+### 7.4.1 execution 명시자 표현식
+
+- `excution` 명시자는 `Advice`를 적용할 메서드를 지정할 때 사용한다.
+  - `수식어패턴`: `public`, `protected`등을 지정(생략 가능)
+  - `리턴타입패턴`: 리턴 타입을 명시
+  - `클래스이름패턴`, `메서드이름패턴`: 클래스 이름 및 메서드 이름을 패턴으로 명시
+  - `파라미터패턴`: 매칭될 파라미터에 대해 명시
+
+```java
+excution(수식어패턴? 리턴타입패턴 클래스이름패턴?메서드이름패턴(파라미터패턴))
+```
+
+```java
+@Pointcut("execution(public * factorial..*(..))")
+```
+
+- `*`: 모든 값을 표현
+- `..`: 0개 이상임을 의미한다.
+
+
+
+#### execution 명시자 예시
+
+| 예                                                   | 설명                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------ |
+| `executon(public void set*(..))`                     | 리턴 타입이 `void`, 메서드이름이 `set`으로 시작하며 파라미터가 0개 이상(`..`)인 메서드를 호출 |
+| `execution(* myPacakge.*.*())`                       | `myPacakge` 패키지의 타입에 속한 파라미터가 없는 모든 메서드를 호출 |
+| `execution(* myPacakge..*.*(..))`                    | `myPacakge` 패키지 및 하위 패키지(`..`)에 있는 파라미터가 0개 이상인 메서드를 호출. |
+| `execution(Long myPacakge.Calculator.factorial(..))` | 리턴 타입이 `Long`이고 `Calculator` 타입의 `factorial()` 메서드를 호출 |
+| `execution(* get*(*))`                               | 이름이 `get`으로 시작하고 파라미터가 한 개인 메서드 호출     |
+| `execution(* get*(*, *))`                            | 이름이 `get`으로 시작하고 파라미터가 두 개인 메서드 호출     |
+| `execution(* read*(Integer, ..))`                    | 메서드 이름이 `read`로 시작하고, 첫번째 파라미터 타입이 `Integer`이며 한 개 이상의 파라미터를 갖는 메서드 호출 |
 
